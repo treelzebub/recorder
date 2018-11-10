@@ -2,6 +2,7 @@ package net.treelzebub.recorder
 
 import android.media.AudioFormat
 import android.media.AudioRecord
+import android.media.AudioRecord.RECORDSTATE_RECORDING
 import android.media.MediaRecorder.AudioSource.MIC
 import android.os.Handler
 import android.os.Looper
@@ -27,6 +28,9 @@ class Recorder(
         val buffer = ByteArray(bufferSize)
     }
 
+    val isRecording: Boolean
+        get() = recorder.recordingState == RECORDSTATE_RECORDING
+
     private val recorder = with(config) {
         AudioRecord(source, sampleRate, channelConfig, encoding, bufferSize)
     }
@@ -42,9 +46,9 @@ class Recorder(
         GlobalScope.launch {
             Looper.prepare()
             recorder.setRecordPositionUpdateListener(listener, Handler(Looper.myLooper()))
-            val bytePerSample = config.encoding / 8
+            val bytePerSample = config.encoding / 8f
             val samplesToDraw = config.bufferSize / bytePerSample
-            recorder.positionNotificationPeriod = samplesToDraw
+            recorder.positionNotificationPeriod = samplesToDraw.toInt()
 
             // We need to read first chunk to activate our listener.
             // https://code.google.com/p/android/issues/detail?id=53996
@@ -58,5 +62,6 @@ class Recorder(
     fun release() {
         recorder.release()
         AudioUtil.disposeProcessor()
+        Looper.myLooper().quitSafely()
     }
 }
